@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Dict, List
 
 from app.agents.actions.safe_action_generator import generate_safe_actions
 from app.agents.analyzer.conversation_analyzer import (
@@ -13,8 +13,36 @@ from app.agents.explanation.rag.retrieval_contract import RetrievalRequest
 from app.core.logging import get_logger
 from app.schemas.request import AnalyzeRequest
 from app.utils.text_patterns import resolve_risk_signals
+from app.utils.text_utils import normalize_text
 
 logger = get_logger(__name__)
+
+
+def _build_conversation_excerpt(
+    messages: List[object], matched_phrases: List[str], max_lines: int = 20
+) -> List[str]:
+    if not messages:
+        return []
+
+    phrases = [normalize_text(phrase) for phrase in matched_phrases if phrase.strip()]
+    lines = [f"{message.sender}: {message.content}" for message in messages]
+    normalized_contents = [normalize_text(message.content) for message in messages]
+
+    selected_indices: List[int] = []
+    if phrases:
+        for idx, normalized in enumerate(normalized_contents):
+            if any(phrase in normalized for phrase in phrases):
+                selected_indices.append(idx)
+
+    # 최근 대화를 우선해서 부족한 라인을 채움
+    idx = len(lines) - 1
+    while len(selected_indices) < max_lines and idx >= 0:
+        if idx not in selected_indices:
+            selected_indices.append(idx)
+        idx -= 1
+
+    selected_indices = sorted(selected_indices)
+    return [lines[idx] for idx in selected_indices]
 
 
 def run_analysis_pipeline(payload: AnalyzeRequest) -> Dict[str, object]:
@@ -57,7 +85,9 @@ def run_analysis_pipeline(payload: AnalyzeRequest) -> Dict[str, object]:
     logger.info("Step 5 references: %d", len(references))
 
     # 6. 안전 행동 생성 (LLM: references + 대화 발췌 사용) (최종 응답 생성)
-    conversation_lines = [f"{message.sender}: {message.content}" for message in conversation]
+    conversation_lines = _build_conversation_excerpt(
+        conversation, matched_phrases, max_lines=20
+    )
     safe_actions = generate_safe_actions(
         risk_stage, conversation_type, references, conversation_lines
     )

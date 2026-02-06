@@ -111,14 +111,15 @@ def _get_prototype_centroids() -> Tuple[Dict[str, List[float]], str]:
     return centroids, default_category
 
 
-def _build_embedding_input(conversation: List[str], max_chars: int = 2000) -> str:
+def _build_embedding_input(conversation: List[str], max_chars: int = 4000) -> str:
     parts = [line.strip() for line in conversation if line and line.strip()]
     text = "\n".join(parts).strip()
     if not text:
         return ""
     if len(text) <= max_chars:
         return text
-    return text[:max_chars]
+    # 최근 대화가 더 중요할 가능성이 높아 tail을 우선 사용
+    return text[-max_chars:]
 
 
 def _rule_based_classify(conversation: List[str]) -> Optional[str]:

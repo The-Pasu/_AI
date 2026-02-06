@@ -73,7 +73,7 @@ def _call_openai_safe_actions(
         else "없음"
     )
 
-    def _conversation_excerpt(lines: List[str], max_lines: int = 12) -> str:
+    def _conversation_excerpt(lines: List[str], max_lines: int = 20) -> str:
         if len(lines) <= max_lines:
             return "\n".join(lines)
         head = lines[: max_lines // 2]
