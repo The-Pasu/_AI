@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 
-from app.api.v1.analyze import router as analyze_router
+from app.api.analyze import router as analyze_router
 from app.core.config import API_PREFIX, APP_NAME
 
 

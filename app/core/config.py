@@ -1,2 +1,2 @@
 APP_NAME = "AI-Server"
-API_PREFIX = "/api/v1"
+API_PREFIX = "/api"

@@ -1,15 +1,17 @@
-from typing import List, Literal, Optional
+from datetime import datetime
+from typing import List
 
 from pydantic import BaseModel, Field
 
 
-class ConversationTurn(BaseModel):
-    speaker: Literal["user", "other"] = Field(..., description="Message speaker")
-    text: str = Field(..., description="Message content")
+class Message(BaseModel):
+    type: str = Field(..., description="Message type (e.g. TEXT, URL)")
+    content: str = Field(..., description="Message content")
+    sender: str = Field(..., description="Message sender (e.g. ME, OTHER)")
+    timestamp: datetime = Field(..., description="Message timestamp in ISO 8601")
 
 
 class AnalyzeRequest(BaseModel):
-    conversation: List[ConversationTurn] = Field(
-        ..., description="Ordered conversation turns with speaker and text"
-    )
-    language: Optional[str] = Field(default=None, description="Optional language hint")
+    uuid: str = Field(..., description="Request UUID")
+    messages: List[Message] = Field(..., description="Ordered message list")
+    platform: str = Field(..., description="Platform name (e.g. TELEGRAM)")

@@ -3,14 +3,19 @@ from typing import List
 from pydantic import BaseModel, Field
 
 
-class Reason(BaseModel):
+class RagReference(BaseModel):
     source: str
-    note: str
+    summary: str
+
+
+class RiskSignal(BaseModel):
+    quote: str
+    reason: str
 
 
 class AnalyzeResponse(BaseModel):
-    risk_stage: str = Field(..., description="normal | suspicious | critical")
-    type: str
-    reason: List[Reason] = Field(default_factory=list)
     summary: str
-    recommended_questions: List[str]
+    type: str
+    risk_signals: List[RiskSignal] = Field(default_factory=list)
+    additional_recommendations: List[str] = Field(default_factory=list)
+    rag_references: List[RagReference] = Field(default_factory=list)
