@@ -20,7 +20,7 @@ Conversation-based risk decision support system with a deterministic pipeline.
 
 ## 환경변수
 
-- `.env.example` + 실제 OpenAI API 키
+- `OPENAI_API_KEY` + OpenAI API 키 필요
 - `OPENAI_OCR_MODEL` (기본값: `gpt-4o-mini`)
 - `OCR_DOWNLOAD_TIMEOUT_SECONDS` (기본값: `10`)
 - `OCR_MAX_IMAGE_BYTES` (기본값: `5000000`)
