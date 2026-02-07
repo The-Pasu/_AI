@@ -1,11 +1,13 @@
 from datetime import datetime
-from typing import List
+from typing import List, Literal
 
 from pydantic import BaseModel, Field
 
 
 class Message(BaseModel):
-    type: str = Field(..., description="Message type (e.g. TEXT, URL)")
+    type: Literal["TEXT", "URL"] = Field(
+        ..., description="Message type (TEXT or URL)"
+    )
     content: str = Field(..., description="Message content")
     sender: str = Field(..., description="Message sender (e.g. ME, OTHER)")
     timestamp: datetime = Field(..., description="Message timestamp in ISO 8601")

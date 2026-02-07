@@ -11,6 +11,7 @@ from app.agents.decision.decision_orchestrator import decide_risk_stage
 from app.agents.explanation.rag.rag_provider import retrieve_evidence
 from app.agents.explanation.rag.retrieval_contract import RetrievalRequest
 from app.core.logging import get_logger
+from app.pipeline.message_preprocessor import normalize_messages_with_ocr
 from app.schemas.request import AnalyzeRequest
 from app.utils.text_patterns import resolve_risk_signals
 from app.utils.text_utils import normalize_text
@@ -46,14 +47,18 @@ def _build_conversation_excerpt(
 
 
 def run_analysis_pipeline(payload: AnalyzeRequest) -> Dict[str, object]:
-    conversation = payload.messages
-    contents = [message.content for message in conversation]
+    conversation = normalize_messages_with_ocr(payload.messages)
+    contents = [message.content for message in conversation if message.content.strip()]
     other_contents = [
         message.content
         for message in conversation
-        if message.sender.strip().upper() == "OTHER"
+        if message.sender.strip().upper() == "OTHER" and message.content.strip()
     ]
-    logger.info("Pipeline start: %d turns (other=%d)", len(conversation), len(other_contents))
+    logger.info(
+        "Pipeline start: %d turns (other=%d)",
+        len(conversation),
+        len(other_contents),
+    )
 
     # 1. 대화 유형 분류 (임베딩 + fallback) (유형별 신호 범위 결정을 위함)
     conversation_type = classify_conversation_type(contents)
