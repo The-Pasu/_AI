@@ -16,7 +16,7 @@ from app.agents.explanation.rag.retrieval_contract import Reference
 load_dotenv()
 
 OPENAI_MODEL_ENV = "OPENAI_MODEL_ENV"
-DEFAULT_OPENAI_MODEL = "gpt-5-mini"
+DEFAULT_OPENAI_MODEL = "gpt-4o-mini"
 
 logger = get_logger(__name__)
 

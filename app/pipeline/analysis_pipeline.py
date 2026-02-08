@@ -16,11 +16,14 @@ from app.schemas.request import AnalyzeRequest
 from app.utils.text_patterns import resolve_risk_signals
 from app.utils.text_utils import normalize_text
 
+from typing import Sequence
+from app.schemas.request import Message
+
 logger = get_logger(__name__)
 
 
 def _build_conversation_excerpt(
-    messages: List[object], matched_phrases: List[str], max_lines: int = 20
+    messages: Sequence[Message], matched_phrases: List[str], max_lines: int = 20
 ) -> List[str]:
     if not messages:
         return []
