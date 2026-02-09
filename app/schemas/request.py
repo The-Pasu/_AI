@@ -19,3 +19,10 @@ class AnalyzeRequest(BaseModel):
     platform: Literal["INSTAGRAM", "TELEGRAM"] = Field(
         ..., description="Platform name (INSTAGRAM or TELEGRAM)"
     )
+    type: Literal["구직", "중고거래", "재테크", "부업"] = Field(
+        ..., description="Conversation type (구직, 중고거래, 재테크, 부업)"
+    )
+
+
+class ReportRequest(BaseModel):
+    uuid: str = Field(..., description="User UUID")

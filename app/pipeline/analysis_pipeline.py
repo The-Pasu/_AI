@@ -1,4 +1,4 @@
-from typing import Dict, List
+from typing import Dict, List, Sequence
 
 from app.agents.actions.safe_action_generator import generate_safe_actions
 from app.agents.analyzer.conversation_analyzer import (
@@ -6,18 +6,14 @@ from app.agents.analyzer.conversation_analyzer import (
     extract_signal_phrases,
     signal_query_terms,
 )
-from app.agents.context.conversation_type_classifier import classify_conversation_type
 from app.agents.decision.decision_orchestrator import decide_risk_stage
 from app.agents.explanation.rag.rag_provider import retrieve_evidence
 from app.agents.explanation.rag.retrieval_contract import RetrievalRequest
 from app.core.logging import get_logger
 from app.pipeline.message_preprocessor import normalize_messages_with_ocr
-from app.schemas.request import AnalyzeRequest
+from app.schemas.request import AnalyzeRequest, Message
 from app.utils.text_patterns import resolve_risk_signals
 from app.utils.text_utils import normalize_text
-
-from typing import Sequence
-from app.schemas.request import Message
 
 logger = get_logger(__name__)
 
@@ -51,7 +47,6 @@ def _build_conversation_excerpt(
 
 def run_analysis_pipeline(payload: AnalyzeRequest) -> Dict[str, object]:
     conversation = normalize_messages_with_ocr(payload.messages)
-    contents = [message.content for message in conversation if message.content.strip()]
     other_contents = [
         message.content
         for message in conversation
@@ -63,9 +58,9 @@ def run_analysis_pipeline(payload: AnalyzeRequest) -> Dict[str, object]:
         len(other_contents),
     )
 
-    # 1. 대화 유형 분류 (임베딩 + fallback) (유형별 신호 범위 결정을 위함)
-    conversation_type = classify_conversation_type(contents)
-    logger.info("Step 1 conversation_type: %s", conversation_type)
+    # 1. 입력에서 대화 유형 수신 (유형별 신호 범위 결정을 위함)
+    conversation_type = payload.type
+    logger.info("Step 1 conversation_type(from input): %s", conversation_type)
 
     # 2. 규칙 기반 신호 추출 (유형 기반 + 공통 신호) (위험 신호 후보 추출)
     allowed_signals = resolve_risk_signals(conversation_type)
@@ -111,4 +106,6 @@ def run_analysis_pipeline(payload: AnalyzeRequest) -> Dict[str, object]:
         "risk_signals": safe_actions["risk_signals"],
         "additional_recommendations": safe_actions["additional_recommendations"],
         "rag_references": rag_references,
+        "risk_stage": risk_stage,
+        "rule_signals": rule_signals,
     }

@@ -12,3 +12,5 @@ coverage.xml
 dist/
 build/
 .DS_Store
+.embedding_cache.json
+app.db
