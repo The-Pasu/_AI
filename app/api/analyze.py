@@ -10,7 +10,7 @@ router = APIRouter()
 logger = get_logger(__name__)
 
 
-@router.post("/analyze", response_model=AnalyzeResponse)
+@router.post("/analyze", response_model=AnalyzeResponse, response_model_by_alias=True)
 def analyze(payload: AnalyzeRequest) -> AnalyzeResponse:
     result = run_analysis_pipeline(payload)
     try:

@@ -18,7 +18,11 @@ class AnalyzeResponse(BaseModel):
     type: str
     risk_signals: List[RiskSignal] = Field(default_factory=list)
     additional_recommendations: List[str] = Field(default_factory=list)
+    recommended_questions: List[str] = Field(default_factory=list)
     rag_references: List[RagReference] = Field(default_factory=list)
+
+    class Config:
+        allow_population_by_field_name = True
 
 
 class ReportPeriod(BaseModel):

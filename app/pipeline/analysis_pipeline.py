@@ -105,6 +105,7 @@ def run_analysis_pipeline(payload: AnalyzeRequest) -> Dict[str, object]:
         "type": conversation_type,
         "risk_signals": safe_actions["risk_signals"],
         "additional_recommendations": safe_actions["additional_recommendations"],
+        "recommended_questions": safe_actions.get("recommended_questions", []),
         "rag_references": rag_references,
         "risk_stage": risk_stage,
         "rule_signals": rule_signals,

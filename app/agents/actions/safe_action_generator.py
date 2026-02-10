@@ -20,9 +20,38 @@ DEFAULT_OPENAI_MODEL = "gpt-4o-mini"
 
 logger = get_logger(__name__)
 
+_DEFAULT_RECOMMENDED_QUESTIONS = {
+    "구직": [
+        "공식 채용 공고 링크와 회사 연락처를 알려주실 수 있나요?",
+        "등록비나 교육비가 필요한 근거 문서를 제공해 주실 수 있나요?",
+        "채용 담당자의 성함과 소속을 확인할 수 있을까요?",
+    ],
+    "중고거래": [
+        "직거래 가능한 시간과 장소를 제안해 주실 수 있나요?",
+        "안전결제가 플랫폼 내 기능인지 확인해 주실 수 있나요?",
+        "상품의 실제 사진을 오늘 찍어서 보내주실 수 있나요?",
+    ],
+    "재테크": [
+        "해당 상품의 공식 등록/인가 정보를 확인할 수 있을까요?",
+        "원금 보장 근거와 약관을 문서로 제공해 주실 수 있나요?",
+        "수익 구조와 수수료를 구체적으로 설명해 주실 수 있나요?",
+    ],
+    "부업": [
+        "회사 정보와 사업자등록번호를 확인할 수 있을까요?",
+        "선입금이 필요한 이유와 환불 규정을 문서로 안내해 주실 수 있나요?",
+        "업무 범위와 보수 산정 기준을 구체적으로 알려주실 수 있나요?",
+    ],
+}
+
+_GENERIC_RECOMMENDED_QUESTIONS = [
+    "공식 채널(웹사이트/고객센터)로 사실 여부를 확인할 수 있을까요?",
+    "요청하신 내용에 대한 근거 문서를 제공해 주실 수 있나요?",
+    "거래 절차와 비용 조건을 구체적으로 안내해 주실 수 있나요?",
+]
+
 
 def _fallback_safe_actions(
-    risk_stage: str, references: List[Reference], platform: str
+    risk_stage: str, references: List[Reference], platform: str, conversation_type: str
 ) -> Dict[str, object]:
     guidance = get_platform_guidance(platform)
     if references:
@@ -60,11 +89,14 @@ def _fallback_safe_actions(
         recommendations,
         guidance.fallback_recommendations + [guidance.mandatory_recommendation],
     )
+    fallback_questions = _default_questions_for_type(conversation_type)
+    recommended_questions = _ensure_questions([], fallback_questions)
 
     return {
         "summary": summary,
         "risk_signals": [],
         "additional_recommendations": recommendations,
+        "recommended_questions": recommended_questions,
         "rag_references": [],
     }
 
@@ -148,6 +180,37 @@ def _ensure_min_recommendations(
     return deduped[:max_items]
 
 
+def _default_questions_for_type(conversation_type: str) -> List[str]:
+    key = str(conversation_type or "").strip()
+    return list(_DEFAULT_RECOMMENDED_QUESTIONS.get(key, _GENERIC_RECOMMENDED_QUESTIONS))
+
+
+def _ensure_questions(
+    questions: List[str],
+    fallback_candidates: List[str],
+    required_count: int = 3,
+) -> List[str]:
+    deduped: List[str] = []
+    seen = set()
+    for question in questions:
+        text = str(question).strip()
+        if not text or text in seen:
+            continue
+        deduped.append(text)
+        seen.add(text)
+
+    for candidate in fallback_candidates:
+        if len(deduped) >= required_count:
+            break
+        text = str(candidate).strip()
+        if not text or text in seen:
+            continue
+        deduped.append(text)
+        seen.add(text)
+
+    return deduped[:required_count]
+
+
 def _call_openai_safe_actions(
     risk_stage: str,
     conversation_type: str,
@@ -188,6 +251,8 @@ def _call_openai_safe_actions(
         "risk_signals의 각 항목은 quote(대화에서 그대로 인용)와 reason(왜 위험한지)로 구성한다. "
         "quote는 대화 발췌에 실제로 등장하는 문장/구절이어야 한다. "
         "additional_recommendations는 사용자가 취할 추가 확인/보호 조치를 2~4개로 제시한다. "
+        "recommended_questions는 사용자가 상대방에게 확인하기 위해 묻는 질문 3개를 제시한다. "
+        "recommended_questions는 존댓말 의문문으로 작성한다. "
         "reason과 additional_recommendations는 반드시 존댓말(입니다/합니다/하세요)로 작성한다. "
         "대화 발췌 내용을 참고해 구체화해라. "
         "참고 자료에 없는 사실은 만들지 마라. "
@@ -206,6 +271,11 @@ def _call_openai_safe_actions(
         "\"additional_recommendations\":["
         "\"공식 채용 공고와 회사 연락처로 사실 여부를 확인하세요.\","
         "\"입금 요청은 보류하고 서면 안내를 요청하세요.\""
+        "],"
+        "\"recommended_questions\":["
+        "\"공식 채용 공고 링크를 보내주실 수 있나요?\","
+        "\"등록비가 필요한 근거 문서를 제공해 주실 수 있나요?\","
+        "\"담당자 성함과 회사 연락처를 확인할 수 있을까요?\""
         "]"
         "}"
         "\n"
@@ -224,6 +294,11 @@ def _call_openai_safe_actions(
         "\"additional_recommendations\":["
         "\"플랫폼 내 안전결제 기능을 사용하고 외부 링크 결제는 피하세요.\","
         "\"직거래 또는 대면 확인이 가능한 방식으로 거래하세요.\""
+        "],"
+        "\"recommended_questions\":["
+        "\"직거래 가능한 시간과 장소를 제안해 주실 수 있나요?\","
+        "\"안전결제 링크가 플랫폼 내 기능인지 확인해 주실 수 있나요?\","
+        "\"상품의 실제 사진을 오늘 찍어서 보내주실 수 있나요?\""
         "]"
         "}"
         "\n"
@@ -240,6 +315,11 @@ def _call_openai_safe_actions(
         "\"additional_recommendations\":["
         "\"공식 금융기관 등록 여부와 공시 정보를 먼저 확인하세요.\","
         "\"즉시 가입 요구는 보류하고 충분히 검토하세요.\""
+        "],"
+        "\"recommended_questions\":["
+        "\"해당 상품의 공식 등록/인가 정보를 확인할 수 있을까요?\","
+        "\"원금 보장 근거와 약관을 문서로 제공해 주실 수 있나요?\","
+        "\"수익 구조와 수수료를 구체적으로 설명해 주실 수 있나요?\""
         "]"
         "}"
     )
@@ -288,11 +368,18 @@ def _call_openai_safe_actions(
                             "minItems": 2,
                             "maxItems": 4,
                         },
+                        "recommended_questions": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "minItems": 3,
+                            "maxItems": 3,
+                        },
                     },
                     "required": [
                         "summary",
                         "risk_signals",
                         "additional_recommendations",
+                        "recommended_questions",
                     ],
                 },
                 "strict": True,
@@ -310,6 +397,9 @@ def _call_openai_safe_actions(
         summary = str(payload.get("summary", "")).strip()
         risk_signals = payload.get("risk_signals", [])
         recommendations = payload.get("additional_recommendations", [])
+        questions = payload.get("recommended_questions", [])
+        if not isinstance(questions, list):
+            questions = []
         if not summary or not isinstance(risk_signals, list) or not isinstance(
             recommendations, list
         ):
@@ -336,6 +426,14 @@ def _call_openai_safe_actions(
             cleaned_recommendations,
             guidance.fallback_recommendations + [guidance.mandatory_recommendation],
         )
+        cleaned_questions = _ensure_questions(
+            [
+                str(item).strip()
+                for item in questions
+                if str(item).strip()
+            ],
+            _default_questions_for_type(conversation_type),
+        )
         if len(cleaned_recommendations) < 2:
             logger.warning("OpenAI safe actions recommendations invalid; using fallback.")
             return None
@@ -343,6 +441,7 @@ def _call_openai_safe_actions(
             "summary": summary,
             "risk_signals": cleaned_signals,
             "additional_recommendations": cleaned_recommendations,
+            "recommended_questions": cleaned_questions,
             "rag_references": [],
         }
     except Exception as exc:
@@ -364,4 +463,4 @@ def generate_safe_actions(
     if llm_result:
         return llm_result
 
-    return _fallback_safe_actions(risk_stage, references, platform)
+    return _fallback_safe_actions(risk_stage, references, platform, conversation_type)
