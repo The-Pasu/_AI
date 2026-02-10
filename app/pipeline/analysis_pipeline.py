@@ -52,29 +52,20 @@ def run_analysis_pipeline(payload: AnalyzeRequest) -> Dict[str, object]:
         for message in conversation
         if message.sender.strip().upper() == "OTHER" and message.content.strip()
     ]
-    logger.info(
-        "Pipeline start: %d turns (other=%d)",
-        len(conversation),
-        len(other_contents),
-    )
 
     # 1. 입력에서 대화 유형 수신 (유형별 신호 범위 결정을 위함)
     conversation_type = payload.type
-    logger.info("Step 1 conversation_type(from input): %s", conversation_type)
 
     # 2. 규칙 기반 신호 추출 (유형 기반 + 공통 신호) (위험 신호 후보 추출)
     allowed_signals = resolve_risk_signals(conversation_type)
     rule_signals = analyze_conversation(other_contents, allowed_signals=allowed_signals)
-    logger.info("Step 2 signals: %s", rule_signals)
 
     # 3. RAG 쿼리 보강 (근거 자료 확보를 위한 검색 품질 향상)
     signal_terms = signal_query_terms(rule_signals)
     matched_phrases = extract_signal_phrases(other_contents, allowed_signals=allowed_signals)
-    logger.info("Step 3 query_terms=%s matched_phrases=%s", signal_terms, matched_phrases)
 
     # 4. 결정 오케스트레이터 (위험 단계 산출)
     risk_stage = decide_risk_stage(rule_signals)
-    logger.info("Step 4 risk_stage: %s", risk_stage)
 
     # 5. RAG 검색 (근거 자료 확보)
     retrieval_request = RetrievalRequest(
@@ -85,7 +76,6 @@ def run_analysis_pipeline(payload: AnalyzeRequest) -> Dict[str, object]:
         matched_phrases=matched_phrases,
     )
     references = retrieve_evidence(retrieval_request)
-    logger.info("Step 5 references: %d", len(references))
 
     # 6. 안전 행동 생성 (LLM: references + 대화 발췌 사용) (최종 응답 생성)
     conversation_lines = _build_conversation_excerpt(
@@ -94,7 +84,6 @@ def run_analysis_pipeline(payload: AnalyzeRequest) -> Dict[str, object]:
     safe_actions = generate_safe_actions(
         risk_stage, conversation_type, references, conversation_lines, payload.platform
     )
-    logger.info("Step 6 safe_actions generated")
 
     rag_references = [
         {"source": reference.source, "summary": reference.note} for reference in references
